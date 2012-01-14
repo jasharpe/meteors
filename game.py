@@ -159,6 +159,7 @@ class GameObjectView(pygame.sprite.Sprite):
     self.model.register_listener(self)
     self.rotation_cache = defaultdict(dict)
     self.rotation_cache_key = "default"
+    self.rotatable = True
 
   def init(self):
     self.update_graphics()
@@ -197,13 +198,16 @@ class GameObjectView(pygame.sprite.Sprite):
     ret = False
     if screen_rect.colliderect(screen.get_rect()):
       self.update_graphics()
-      total_rotation = -(rotation - view_rotation) * 180.0 / math.pi
-      cache_rotation = int(round(total_rotation * constants.ROTATION_CACHE_RESOLUTION / (360.0))) % constants.ROTATION_CACHE_RESOLUTION
-      if cache_rotation in self.rotation_cache[self.rotation_cache_key]:
-        to_blit = self.rotation_cache[self.rotation_cache_key][cache_rotation]
+      if self.rotatable:
+        total_rotation = -(rotation - view_rotation) * 180.0 / math.pi
+        cache_rotation = int(round(total_rotation * constants.ROTATION_CACHE_RESOLUTION / (360.0))) % constants.ROTATION_CACHE_RESOLUTION
+        if cache_rotation in self.rotation_cache[self.rotation_cache_key]:
+          to_blit = self.rotation_cache[self.rotation_cache_key][cache_rotation]
+        else:
+          to_blit = pygame.transform.rotate(self.image, total_rotation)
+          self.rotation_cache[self.rotation_cache_key][cache_rotation] = to_blit
       else:
-        to_blit = pygame.transform.rotate(self.image, total_rotation)
-        self.rotation_cache[self.rotation_cache_key][cache_rotation] = to_blit
+        to_blit = self.image
       screen.blit(to_blit, to_blit.get_rect(center=self.tsc(position)))
       ret = True
     return ret
@@ -215,7 +219,7 @@ class PlayerView(GameObjectView):
     #self.original = pygame.Surface([self.tsc(self.model.height), self.tsc(self.model.width)], pygame.SRCALPHA)
     #self.original.fill(self.model.color)
     self.originals = {}
-    for image in ["standing", "jumping", "running2", "running3"]:
+    for image in ["standing3", "jumping", "running2", "running3"]:
       self.originals[image + "_right"] = pygame.transform.rotate(pygame.image.load(os.path.join(image + ".png")).convert_alpha(), 90)
       self.originals[image + "_left"] = pygame.transform.flip(pygame.transform.rotate(pygame.image.load(os.path.join(image + ".png")).convert_alpha(), 90), False, True)
 
@@ -236,8 +240,8 @@ class PlayerView(GameObjectView):
       self.image = self.originals["running" + str(number) + postfix]
       self.rotation_cache_key = "running" + str(number) + postfix
     else:
-      self.image = self.originals["standing" + postfix]
-      self.rotation_cache_key = "standing" + postfix
+      self.image = self.originals["standing3" + postfix]
+      self.rotation_cache_key = "standing3" + postfix
 
 class MeteorView(GameObjectView):
   def __init__(self, model):
@@ -246,6 +250,7 @@ class MeteorView(GameObjectView):
     self.init()
 
     self.bounding_rect = pygame.Rect(0, 0, 2 * self.model.radius, 2 * self.model.radius)
+    self.rotatable = False
 
   def update_graphics(self):
     if self.image is None:
